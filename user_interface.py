@@ -4,7 +4,6 @@ from PyQt5.QtCore import (Qt,
                           )
 from PyQt5.QtWidgets import (QApplication,
                              QMainWindow,
-                             QAction,
                              QPlainTextEdit,
                              QToolBar,
                              QWidget,
@@ -13,6 +12,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QVBoxLayout,
                              QFileDialog,
                              QMdiArea,
+                             QAction,
                              )
 
 from editor import EditorArea
@@ -38,7 +38,7 @@ class IDE(QMainWindow):
             [('Save As', self), ('Ctrl+Shift+S',), ('Save as',), (self.file_saveas,)],
         ]
         run_actions = [
-            [('Run code', self), ('Shift+Return',), ('Run code',), (self.run_code,)]
+            [('Run code', self), ('Ctrl+B',), ('Run code',), (self.run_code,)]
         ]
         menus = ['&File', '&Run']
         all_actions = [file_actions, run_actions]
@@ -52,8 +52,8 @@ class IDE(QMainWindow):
                 action.triggered.connect(*connect)
                 menu.addAction(action)
 
-        self.toolbar = QToolBar(self)
-        self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
+        # self.toolbar = QToolBar('Toolbar', self)
+        # self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
 
         self.editor_area = EditorArea(self)
         self.setCentralWidget(self.editor_area)

@@ -3,6 +3,7 @@ from PyQt5.QtGui import (QPainter,
                          QSyntaxHighlighter,
                          QColor,
                          QTextCharFormat,
+                         QTextCursor,
                          )
 from PyQt5.QtCore import (Qt,
                           QSize,
@@ -11,6 +12,7 @@ from PyQt5.QtCore import (Qt,
                           )
 from PyQt5.QtWidgets import (QPlainTextEdit,
                              QWidget,
+                             QApplication,
                              )
 
 
@@ -83,7 +85,7 @@ class LineNumberArea(QWidget):
         self.text.line_number_paint(event)
 
 
-class CodeText(QPlainTextEdit):
+class LineNumberText(QPlainTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -161,3 +163,70 @@ class CodeText(QPlainTextEdit):
         super().setFont(font)
 
         self.update_line_number_area_width()
+
+
+class CodeText(LineNumberText):
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        modifiers = QApplication.keyboardModifiers()
+
+        if key == Qt.Key_Tab:
+            # Indent tab
+            self.add_tab()
+        elif key == Qt.Key_Backtab:
+            # Unindent tab
+            self.remove_tab()
+        elif key == Qt.Key_Return:
+            # Insert required spaces
+            pass
+        elif key == Qt.Key_Backspace:
+            # Delete requred spaces
+            pass
+        else:
+            super().keyPressEvent(event)
+
+    def add_tab(self):
+        selection_start, selection_end = self.get_selection_index()
+        if selection_start == selection_end:
+            self.insertPlainText('    ')
+            return
+
+        start_block = self.document().findBlock(selection_start)
+        end_block = self.document().findBlock(selection_end)
+        start, end = start_block.blockNumber(), end_block.blockNumber()
+        cursor = self.textCursor()
+
+        cursor.beginEditBlock()
+        cursor.setPosition(start_block.position())
+        for line in range(start, end + 1):
+            cursor.insertText('    ')
+            cursor.movePosition(QTextCursor.NextBlock)
+        cursor.endEditBlock()
+
+    def remove_tab(self):
+        selection_start, selection_end = self.get_selection_index()
+        start_block = self.document().findBlock(selection_start)
+        end_block = self.document().findBlock(selection_end)
+        end = end_block.blockNumber()
+        cursor = self.textCursor()
+
+        cursor.beginEditBlock()
+        block = start_block
+        while 0 <= block.blockNumber() <= end:
+            text = block.text()
+            spaces = len(text) - len(text.lstrip(' '))
+            if spaces > 0:
+                to_delete = spaces % 4 or 4
+                cursor.setPosition(block.position())
+                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, to_delete)
+                cursor.removeSelectedText()
+            block = block.next()
+        cursor.endEditBlock()
+
+    def get_selection_index(self):
+        cursor = self.textCursor()
+        return cursor.selectionStart(), cursor.selectionEnd()
+
+    def block_num_at_index(self, index):
+        return self.document().findBlock(index).blockNumber()

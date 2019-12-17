@@ -1,5 +1,6 @@
 
 import os
+
 from PyQt5.QtGui import (QFont,
                          )
 from PyQt5.QtCore import (Qt,
@@ -51,6 +52,8 @@ class TextEditor(QMainWindow):
         self.code_runner_dock_widget.setMinimumSize(10, 10)
         self.code_runner_dock_widget.setWidget(self.code_runner)
 
+        self.code_runner_dock_widget.closeEvent = lambda e: self.code_runner.cleanup()
+
         self.visualiser_dock_widget = QDockWidget('Visualiser')
         self.visualiser_dock_widget.setMinimumSize(10, 10)
 
@@ -60,7 +63,7 @@ class TextEditor(QMainWindow):
 
     def eventFilter(self, obj, event):
         """Call `self.editor_window.editor_focus_in` if the event is
-        a `QEvent.FocusIn` event."""
+        a `QEvent.FocusIn` event. Filters `self.code_text`."""
         if event.type() == QEvent.FocusIn:
             print(obj, event)
             self.editor_window.editor_focus_in()

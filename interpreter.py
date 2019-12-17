@@ -150,7 +150,7 @@ class FastBrainfuckInterpreter:
         self.commands, self.brackets = self._compile(code)
         self.input_func = input_func
         self.output_func = output_func
-        self.tape = [0] * 30000
+        self.tape = [0] * 40000
         self.command_pointer = 0
         self.tape_pointer = 0
         self.output = []
@@ -173,6 +173,8 @@ class FastBrainfuckInterpreter:
 
     def pointer_op(self, times):
         self.tape_pointer += times
+        if self.tape_pointer < 0:
+            raise ProgramRuntimeError(ErrorTypes.INVALID_TAPE_CELL)
 
     def cell_op(self, times):
         self.tape[self.tape_pointer] = (
@@ -221,7 +223,11 @@ class FastBrainfuckInterpreter:
             if char == '[':
                 bracket_stack.append(len(final_commands))
             elif char == ']':
-                match = bracket_stack.pop()
+                try:
+                    match = bracket_stack.pop()
+                except IndexError:
+                    raise ProgramSyntaxError(
+                        ErrorTypes.UNMATCHED_CLOSE_PAREN, i)
                 current = len(final_commands)
                 brackets[match] = current
                 brackets[current] = match
@@ -244,6 +250,9 @@ class FastBrainfuckInterpreter:
 
         final_commands.append((self.stop, None))
 
+        if bracket_stack:
+            raise ProgramSyntaxError(
+                ErrorTypes.UNMATCHED_OPEN_PAREN)
         return final_commands, brackets
 
 
