@@ -43,7 +43,6 @@ class TextEditor(QMainWindow):
     def init_widgets(self):
 
         self.code_text = CodeText(self)
-        self.code_text.installEventFilter(self)
 
         self.code_runner = CodeRunner(self)
 
@@ -60,14 +59,6 @@ class TextEditor(QMainWindow):
         self.setCentralWidget(self.code_text)
         # self.addDockWidget(Qt.BottomDockWidgetArea, self.code_runner_dock_widget)
         # self.addDockWidget(Qt.TopDockWidgetArea, self.visualiser_dock_widget)
-
-    def eventFilter(self, obj, event):
-        """Call `self.editor_window.editor_focus_in` if the event is
-        a `QEvent.FocusIn` event. Filters `self.code_text`."""
-        if event.type() == QEvent.FocusIn:
-            print(obj, event)
-            self.editor_window.editor_focus_in()
-        return super().eventFilter(obj, event)
 
     def current_save_info(self):
         """Return the current filepath and the current text."""
@@ -162,8 +153,6 @@ class EditorWindow(QTabWidget):
         A better way would be to override `focusInEvent` but that
         never seems to be called."""
         super().mousePressEvent(pos)
-
-        print('Editor Window mouse press')
 
         self.setFocus()
         self.editor_focus_in()

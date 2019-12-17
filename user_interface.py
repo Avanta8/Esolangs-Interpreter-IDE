@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (QApplication,
                              QAction,
                              )
 
-from editor import EditorArea
+from editor import EditorArea, TextEditor
 
 
 class IDE(QMainWindow):

@@ -1,6 +1,4 @@
 
-import threading
-
 from PyQt5.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal, QThread
 from PyQt5.QtGui import (QTextCursor,
                          )
@@ -20,6 +18,8 @@ _INTERPRETERS = {
 class WorkerThread(QThread):
 
     # For some reason, threads slow down the GUI a lot :(
+    # Maybe use multiprocessing with signals instead.
+    # Actually i know the reason - events are slow
 
     error = pyqtSignal(Exception)
     result = pyqtSignal(object)

@@ -4,6 +4,7 @@ from PyQt5.QtGui import (QPainter,
                          QColor,
                          QTextCharFormat,
                          QTextCursor,
+                         QTextFormat,
                          )
 from PyQt5.QtCore import (Qt,
                           QSize,
@@ -11,6 +12,7 @@ from PyQt5.QtCore import (Qt,
                           QRegExp,
                           )
 from PyQt5.QtWidgets import (QPlainTextEdit,
+                             QTextEdit,
                              QWidget,
                              QApplication,
                              )
@@ -167,9 +169,46 @@ class LineNumberText(QPlainTextEdit):
 
 class CodeText(LineNumberText):
 
+    #############
+
+    # NOTE!:
+    # QPlainTextEdit::setExtraSelections
+    # It can be used to: mark text - for breakpoint!
+
+    # Cursor.setCharFormat can be used set set the format
+    # to simulate multicursor.
+
+    # QPlainTextEdit.cursorForPosition(pos)
+    # can be used to set breakpoint to mouse event
+    # can be bound to QWidget.mousePressEvent(event)
+    # where event is a QMouseEvent
+
+    #############
+
+    def __init__(self, texteditor):
+        super().__init__(texteditor)
+        self.texteditor = texteditor
+
+        self.indentation = '    '
+        self.breakpoints = {}
+        self.breakpoint_background = QColor(Qt.yellow)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        self.texteditor.editor_window.editor_focus_in()
+
+    # def mousePressEvent(self, event):
+    #     super().mousePressEvent(event)
+    #     if event.button() == Qt.RightButton:
+    #         print('right button')
+    #         print(self.document().characterAt(self.cursorForPosition(event.pos()).position()))
+
     def keyPressEvent(self, event):
         key = event.key()
         modifiers = QApplication.keyboardModifiers()
+
+        if key == Qt.Key_Q and modifiers == Qt.ControlModifier:
+            self.set_breakpoint()
 
         if key == Qt.Key_Tab:
             # Indent tab
@@ -179,17 +218,66 @@ class CodeText(LineNumberText):
             self.remove_tab()
         elif key == Qt.Key_Return:
             # Insert required spaces
-            pass
+            self.return_key()
         elif key == Qt.Key_Backspace:
             # Delete requred spaces
-            pass
+            self.backspace()
+        elif key == Qt.Key_Space:
+            # Inserts an edit separator
+            # This is a bit hacky though. Probably refactor this.
+            cursor = self.textCursor()
+            cursor.beginEditBlock()
+            super().keyPressEvent(event)
+            cursor.endEditBlock()
         else:
             super().keyPressEvent(event)
+
+    def set_breakpoint(self):
+
+        print('set breakpoint')
+
+        selection_start, selection_end = self.get_selection_index()
+
+        if selection_start == selection_end:
+            selection_end += 1
+
+        # bps = []
+        # extra_selection = QTextEdit.ExtraSelection()
+        # # print(type(extra_selection.cursor))
+        # # print(type(extra_selection.format))
+        # cursor = self.textCursor()
+        # cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+        # # cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 3)
+        # extra_selection.format.setBackground(self.breakpoint_background)
+        # extra_selection.format.setAnchor(True)
+        # extra_selection.cursor = cursor
+        # bps.append(extra_selection)
+
+        # cursor = self.textCursor()
+        # for pos in range(selection_start, selection_end):
+        #     print(pos)
+        #     cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+        #     if pos in self.breakpoints:
+        #         self.breakpoints.pop(pos)
+        #     else:
+        #         extra_selection = QTextEdit.ExtraSelection()
+        #         extra_selection.format.setBackground(self.breakpoint_background)
+        #         extra_selection.cursor = cursor
+        #         self.breakpoints[pos] = extra_selection
+        #     cursor.clearSelection()
+
+        # self.setExtraSelections(self.breakpoints.values())
+
+        # cursor = self.textCursor()
+        # if cursor.hasSelection():
+        #     fmt = QTextCharFormat()
+        #     fmt.setBackground(Qt.green)
+        #     cursor.setCharFormat(fmt)
 
     def add_tab(self):
         selection_start, selection_end = self.get_selection_index()
         if selection_start == selection_end:
-            self.insertPlainText('    ')
+            self.insertPlainText(self.indentation)
             return
 
         start_block = self.document().findBlock(selection_start)
@@ -200,7 +288,7 @@ class CodeText(LineNumberText):
         cursor.beginEditBlock()
         cursor.setPosition(start_block.position())
         for line in range(start, end + 1):
-            cursor.insertText('    ')
+            cursor.insertText(self.indentation)
             cursor.movePosition(QTextCursor.NextBlock)
         cursor.endEditBlock()
 
@@ -214,8 +302,7 @@ class CodeText(LineNumberText):
         cursor.beginEditBlock()
         block = start_block
         while 0 <= block.blockNumber() <= end:
-            text = block.text()
-            spaces = len(text) - len(text.lstrip(' '))
+            spaces = self.search_spaces(block)
             if spaces > 0:
                 to_delete = spaces % 4 or 4
                 cursor.setPosition(block.position())
@@ -224,9 +311,42 @@ class CodeText(LineNumberText):
             block = block.next()
         cursor.endEditBlock()
 
+    def return_key(self):
+        selection_start, selection_end = self.get_selection_index()
+        cursor = self.textCursor()
+
+        cursor.beginEditBlock()
+        if selection_start != selection_end:
+            cursor.removeSelectedText()
+
+        curr_block = cursor.block()
+        spaces = self.search_spaces(curr_block)
+        cursor.insertText('\n' + ' ' * spaces)
+
+        cursor.endEditBlock()
+
+    def backspace(self):
+        selection_start, selection_end = self.get_selection_index()
+        cursor = self.textCursor()
+        if selection_start != selection_end or cursor.atBlockStart():
+            # QTextCursor.deletePreviousChar() deletes any selected text if there is any
+            cursor.deletePreviousChar()
+            return
+
+        block = cursor.block()
+        spaces = self.search_spaces(block)
+        if spaces == cursor.positionInBlock():
+            to_delete = spaces % 4 or 4
+            cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, to_delete)
+            cursor.removeSelectedText()
+        else:
+            cursor.deletePreviousChar()
+
+    def search_spaces(self, block):
+        """Returns the number of spaces at the start of `block`."""
+        text = block.text()
+        return len(text) - len(text.lstrip(' '))
+
     def get_selection_index(self):
         cursor = self.textCursor()
         return cursor.selectionStart(), cursor.selectionEnd()
-
-    def block_num_at_index(self, index):
-        return self.document().findBlock(index).blockNumber()
