@@ -11,10 +11,11 @@ class ErrorTypes(enum.Enum):
 class BFInterpreter:
     """Brainfuck interpreter."""
 
-    def __init__(self, code, input_func=input, output_func=None, maxlen=1_000_000):
+    def __init__(self, code, input_func=input, output_func=None, undo_input_func=None, maxlen=1_000_000):
         self.code = code
         self.input_func = input_func
         self.output_func = output_func
+        self.undo_input_func = undo_input_func
         self.brackets = self.match_brackets(code)
         self.tape = [0]
         self.tape_pointer = 0
@@ -105,10 +106,19 @@ class BFInterpreter:
             self.output_func(self.output)
 
     def back(self):
+        # undo_input = self.current_instruction == ','
         try:
-            self.code_pointer, self.tape_pointer, tape_val, output_len = self.past.pop()
+            # self.code_pointer, self.tape_pointer, tape_val, output_len = self.past.pop()
+            prev_info = self.past.pop()
         except IndexError:
             raise NoPreviousExecutionError
+
+        undo_input = self.current_instruction == ','
+        if undo_input and self.undo_input_func is not None:
+            self.undo_input_func()
+
+        self.code_pointer, self.tape_pointer, tape_val, output_len = prev_info
+
         if output_len != len(self.output):
             self.output = self.output[:-1]
             self.output_func(self.output)
@@ -292,3 +302,7 @@ class ProgramSyntaxError(ProgramError):
 
 class ProgramRuntimeError(ProgramError):
     """Error raised when there is a error while the program is running. (Does not include missing input.)"""
+
+
+if __name__ == '__main__':
+    print(issubclass(ProgramSyntaxError, InterpreterError))

@@ -57,6 +57,9 @@ class BrainfuckHighlighter(QSyntaxHighlighter):
         self.rule_formats['io'].setForeground(QColor('blue'))
         self.rule_formats['comment'].setForeground(QColor('grey'))
 
+        # for format_ in self.rule_formats.values():
+        #     format_.setBackground(QColor(Qt.white))
+
     def set_formats(self):
         """Set the format for each regexp and rehighlight the document.
         This method should be called whenever the default formatting changes,
@@ -210,6 +213,7 @@ class CodeText(LineNumberText):
         if key == Qt.Key_Q and modifiers == Qt.ControlModifier:
             self.set_breakpoint()
 
+        special_key = True
         if key == Qt.Key_Tab:
             # Indent tab
             self.add_tab()
@@ -229,6 +233,11 @@ class CodeText(LineNumberText):
             cursor.beginEditBlock()
             super().keyPressEvent(event)
             cursor.endEditBlock()
+        else:
+            special_key = False
+
+        if special_key:
+            self.ensureCursorVisible()
         else:
             super().keyPressEvent(event)
 
@@ -268,11 +277,11 @@ class CodeText(LineNumberText):
 
         # self.setExtraSelections(self.breakpoints.values())
 
-        # cursor = self.textCursor()
-        # if cursor.hasSelection():
-        #     fmt = QTextCharFormat()
-        #     fmt.setBackground(Qt.green)
-        #     cursor.setCharFormat(fmt)
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            fmt = QTextCharFormat()
+            fmt.setBackground(Qt.green)
+            cursor.setCharFormat(fmt)
 
     def add_tab(self):
         selection_start, selection_end = self.get_selection_index()

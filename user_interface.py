@@ -38,7 +38,8 @@ class IDE(QMainWindow):
             [('Save As', self), ('Ctrl+Shift+S',), ('Save as',), (self.file_saveas,)],
         ]
         run_actions = [
-            [('Run code', self), ('Ctrl+B',), ('Run code',), (self.run_code,)]
+            [('Run code', self), ('Ctrl+B',), ('Run code',), (self.run_code,)],
+            [('Open visualiser', self), ('Ctrl+Shift+B',), ('Visualise run code',), (self.open_visualier,)]
         ]
         menus = ['&File', '&Run']
         all_actions = [file_actions, run_actions]
@@ -109,6 +110,7 @@ class IDE(QMainWindow):
         print('file_saveas')
         if self.editor_area.current_window is None:
             return
+
         filename, extension = QFileDialog.getSaveFileName(self, filter=self._file_filter)
         if not filename:
             return
@@ -130,6 +132,10 @@ class IDE(QMainWindow):
     def run_code(self):
         print('Run code')
         self.editor_area.run_code()
+
+    def open_visualier(self):
+        print('Run visualise')
+        self.editor_area.open_visualier()
 
 
 def main():

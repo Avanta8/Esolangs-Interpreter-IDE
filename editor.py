@@ -2,6 +2,7 @@
 import os
 
 from PyQt5.QtGui import (QFont,
+                         QColor,
                          )
 from PyQt5.QtCore import (Qt,
                           QEvent,
@@ -22,6 +23,7 @@ from PyQt5.QtWidgets import (QAction,
 
 from text import CodeText, BrainfuckHighlighter, DefaultHighlighter
 from coderunner import CodeRunner
+from visualiser import VisualiserMaster
 
 
 class TextEditor(QMainWindow):
@@ -45,6 +47,7 @@ class TextEditor(QMainWindow):
         self.code_text = CodeText(self)
 
         self.code_runner = CodeRunner(self)
+        self.visualiser = VisualiserMaster(self, self.code_text)
 
         # Don't put self in dock widgets as it forces them to appear.
         self.code_runner_dock_widget = QDockWidget('Code Runner')
@@ -55,6 +58,7 @@ class TextEditor(QMainWindow):
 
         self.visualiser_dock_widget = QDockWidget('Visualiser')
         self.visualiser_dock_widget.setMinimumSize(10, 10)
+        self.visualiser_dock_widget.setWidget(self.visualiser)
 
         self.setCentralWidget(self.code_text)
         # self.addDockWidget(Qt.BottomDockWidgetArea, self.code_runner_dock_widget)
@@ -62,7 +66,7 @@ class TextEditor(QMainWindow):
 
     def current_save_info(self):
         """Return the current filepath and the current text."""
-        return self.filepath, self.code_text.toPlainText()
+        return self.filepath, self.get_code_text()
 
     def store_filepath(self, filepath):
         """Set `self.filepath` to `filepath`. Set the current highlighter."""
@@ -70,6 +74,7 @@ class TextEditor(QMainWindow):
         self.extension = os.path.splitext(self.filepath)[1]
 
         self.code_runner.set_extension(self.extension)
+        self.visualiser.set_extension(self.extension)
         self.set_highlighter()
 
     def store_open_file(self, filepath, text):
@@ -89,11 +94,25 @@ class TextEditor(QMainWindow):
         self.addDockWidget(Qt.BottomDockWidgetArea, self.code_runner_dock_widget)
         self.code_runner_dock_widget.show()
 
+    def dock_visualiser(self):
+        """Docks the `visualiser_dock_widget` if it is not already visible"""
+        if self.visualiser.isVisible():
+            return
+        self.addDockWidget(Qt.TopDockWidgetArea, self.visualiser_dock_widget)
+        self.visualiser_dock_widget.show()
+
     def run_code(self):
         self.dock_code_runner()
 
         text = self.code_text.toPlainText()
         self.code_runner.run_code(text)
+
+    def open_visualier(self):
+        self.dock_visualiser()
+        self.visualiser.visualise()
+
+    def get_code_text(self):
+        return self.code_text.toPlainText()
 
 
 class EditorWindow(QTabWidget):
@@ -182,6 +201,9 @@ class EditorWindow(QTabWidget):
     def run_code(self):
         self.currentWidget().editor.run_code()
 
+    def open_visualier(self):
+        self.currentWidget().editor.open_visualier()
+
 
 class EditorArea(QWidget):
     """Whole text editor area containing zero or more `EditorWindow` objects."""
@@ -215,6 +237,7 @@ class EditorArea(QWidget):
             if self.splitter.count() == 0:
                 self.new_window()
             window = self.current_window if self.current_window is not None else self.splitter.widget(0)
+
         window.new_editor()
 
     def new_window(self, new_editor=False):
@@ -249,3 +272,8 @@ class EditorArea(QWidget):
         if self.current_window is None:
             return
         self.current_window.run_code()
+
+    def open_visualier(self):
+        if self.current_window is None:
+            return
+        self.current_window.open_visualier()
