@@ -105,6 +105,9 @@ class LineNumberText(QPlainTextEdit):
 
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
+        self.cursorPositionChanged.connect(self.highlight_current_line)
+
+        self.current_line_colour = QColor(Qt.gray).lighter(150)
 
     def line_number_area_width(self, line=None):
         """Calculates the spacing required for `line`. If `line` is None,
@@ -169,6 +172,21 @@ class LineNumberText(QPlainTextEdit):
 
         self.update_line_number_area_width()
 
+    def highlight_current_line(self):
+        if self.isReadOnly():
+            return
+
+        extra_selections = []
+
+        selection = QTextEdit.ExtraSelection()
+        selection.format.setBackground(self.current_line_colour)
+        selection.format.setProperty(QTextFormat.FullWidthSelection, True)
+        selection.cursor = self.textCursor()
+        selection.cursor.clearSelection()
+        extra_selections.append(selection)
+
+        self.setExtraSelections(extra_selections)
+
 
 class CodeText(LineNumberText):
 
@@ -188,6 +206,10 @@ class CodeText(LineNumberText):
 
     #############
 
+    HIGHLIGHTER_TYPES = {
+        '.b': BrainfuckHighlighter,
+    }
+
     def __init__(self, texteditor):
         super().__init__(texteditor)
         self.texteditor = texteditor
@@ -195,6 +217,8 @@ class CodeText(LineNumberText):
         self.indentation = '    '
         self.breakpoints = {}
         self.breakpoint_background = QColor(Qt.yellow)
+
+        self.highlighter = DefaultHighlighter(self.document())
 
     def focusInEvent(self, event):
         super().focusInEvent(event)
@@ -337,6 +361,8 @@ class CodeText(LineNumberText):
     def backspace(self):
         selection_start, selection_end = self.get_selection_index()
         cursor = self.textCursor()
+        # If there is a selection, then just delete that selection.
+        # If cursor is at the start of a line, then just delete that line.
         if selection_start != selection_end or cursor.atBlockStart():
             # QTextCursor.deletePreviousChar() deletes any selected text if there is any
             cursor.deletePreviousChar()
@@ -359,3 +385,10 @@ class CodeText(LineNumberText):
     def get_selection_index(self):
         cursor = self.textCursor()
         return cursor.selectionStart(), cursor.selectionEnd()
+
+    def set_extension(self, extension):
+        highlighter_type = self.HIGHLIGHTER_TYPES.get(extension, DefaultHighlighter)
+        if type(self.highlighter) is highlighter_type:
+            return
+
+        self.highlighter = highlighter_type(self.document())

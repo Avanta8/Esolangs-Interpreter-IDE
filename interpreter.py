@@ -11,7 +11,7 @@ class ErrorTypes(enum.Enum):
 class BFInterpreter:
     """Brainfuck interpreter."""
 
-    def __init__(self, code, input_func=input, output_func=None, undo_input_func=None, maxlen=1_000_000):
+    def __init__(self, code, input_func=input, output_func=print, undo_input_func=None, maxlen=1_000_000):
         self.code = code
         self.input_func = input_func
         self.output_func = output_func
@@ -46,8 +46,7 @@ class BFInterpreter:
             while self.current_instruction not in self.commands:
                 self.code_pointer += 1
         except IndexError:
-            self.code_pointer -= 1
-            self.past.pop()
+            self.code_pointer = self.past.pop()[0]
             raise ExecutionEndedError
 
         code_pointer = self.code_pointer
@@ -97,7 +96,7 @@ class BFInterpreter:
         if input_:
             self.tape[self.tape_pointer] = ord(input_) % 256
         else:
-            self.back()  # Reset back to was it was before
+            self.code_pointer = self.past.pop()[0]
             raise NoInputError
 
     def add_output(self):
@@ -106,9 +105,7 @@ class BFInterpreter:
             self.output_func(self.output)
 
     def back(self):
-        # undo_input = self.current_instruction == ','
         try:
-            # self.code_pointer, self.tape_pointer, tape_val, output_len = self.past.pop()
             prev_info = self.past.pop()
         except IndexError:
             raise NoPreviousExecutionError
@@ -305,4 +302,9 @@ class ProgramRuntimeError(ProgramError):
 
 
 if __name__ == '__main__':
-    print(issubclass(ProgramSyntaxError, InterpreterError))
+    with open(r'programs\sample\mandelbrot.b') as file:
+        prog = file.read()
+
+    interpreter = BFInterpreter(prog, output_func=print)
+    for i in range(100_000):
+        interpreter.step()

@@ -1,6 +1,7 @@
 
 import codecs
 import re
+from string import printable
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import (QTextCursor,
@@ -21,6 +22,9 @@ from PyQt5.QtWidgets import (QPlainTextEdit,
                              QSplitter,
                              QFrame,
                              )
+
+
+ASCII_PRINTABLE = set(printable)
 
 
 class BrainfuckDecoder:
@@ -56,7 +60,7 @@ class InputTextEdit(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.psudo_cursor = self.textCursor()
+        self.textcursor = self.textCursor()
 
         self.default_char_format = QTextCharFormat()
         self.default_char_format.setBackground(QColor(Qt.white))
@@ -79,11 +83,13 @@ class InputTextEdit(QPlainTextEdit):
 
         char, length = self.decoder.decode_next(text[last_input:])
         if char is None:
-            return
+            return None
 
         self.remove_prev_highlight()
         self.prev_input_indexes.append(last_input + length)
         self.highlight_current()
+
+        self.document().clearUndoRedoStacks()
 
         return char
 
@@ -105,12 +111,46 @@ class InputTextEdit(QPlainTextEdit):
         self.format_range(start, end, self.default_char_format)
 
     def format_range(self, start, end, format_):
-        self.psudo_cursor.setPosition(start)
-        self.psudo_cursor.setPosition(end, QTextCursor.KeepAnchor)
-        self.psudo_cursor.setCharFormat(format_)
+        self.textcursor.setPosition(start)
+        self.textcursor.setPosition(end, QTextCursor.KeepAnchor)
+        self.textcursor.setCharFormat(format_)
 
     def set_extension(self, extension):
         self.decoder = self.DECODERS[extension]
+
+    def canInsertFromMimeData(self, source):
+        print('canInsertFromMimeData', repr(source.text()), source.text() in ASCII_PRINTABLE, source.text().isprintable())
+        return source.hasText() and self._can_add_text()
+
+    def insertFromMimeData(self, source):
+        print('insertFromMimeData')
+        if not self.canInsertFromMimeData(source):
+            return
+
+        self.textCursor().insertText(source.text(), self.default_char_format)
+
+    def _can_add_text(self):
+        """Return whether it would be valid for text to be inserted at the current cursor position."""
+        return self.textCursor().selectionStart() >= self.prev_input_indexes[-1]
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        text = event.text()
+        textcursor = self.textCursor()
+
+        print(key, repr(text))
+
+        if text in ASCII_PRINTABLE:
+            if self._can_add_text():
+                textcursor.insertText(text, self.default_char_format)
+        elif key == Qt.Key_Backspace:
+            if textcursor.hasSelection() and self._can_add_text() or textcursor.position() - 1 >= self.prev_input_indexes[-1]:
+                textcursor.deletePreviousChar()
+        elif key == Qt.Key_Delete:
+            if self._can_add_text():
+                textcursor.deleteChar()
+        else:
+            super().keyPressEvent(event)
 
 
 if __name__ == "__main__":

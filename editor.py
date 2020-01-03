@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (QAction,
                              QDockWidget,
                              )
 
-from text import CodeText, BrainfuckHighlighter, DefaultHighlighter
+from code_text import CodeText, BrainfuckHighlighter, DefaultHighlighter
 from coderunner import CodeRunner
 from visualiser import VisualiserMaster
 
@@ -29,9 +29,10 @@ from visualiser import VisualiserMaster
 class TextEditor(QMainWindow):
     """Basic text editor widget containing a `CodeText` and maybe more."""
 
-    highlighters = {
-        '.b': BrainfuckHighlighter,
-    }
+    # Let the code_text handle this, like the visuialiser or coderunner
+    # highlighters = {
+    #     '.b': BrainfuckHighlighter,
+    # }
 
     def __init__(self, editor_window):
         super().__init__()
@@ -71,21 +72,28 @@ class TextEditor(QMainWindow):
     def store_filepath(self, filepath):
         """Set `self.filepath` to `filepath`. Set the current highlighter."""
         self.filepath = filepath
-        self.extension = os.path.splitext(self.filepath)[1]
+        new_extension = os.path.splitext(self.filepath)[1]
 
-        self.code_runner.set_extension(self.extension)
-        self.visualiser.set_extension(self.extension)
-        self.set_highlighter()
+        if new_extension == self.extension:
+            return
+
+        self.extension = new_extension
+        self.code_text.set_extension(new_extension)
+        self.code_runner.set_extension(new_extension)
+        self.visualiser.set_extension(new_extension)
+        # self.set_highlighter()
 
     def store_open_file(self, filepath, text):
         """Store `filepath` and set current text to `text`."""
         self.store_filepath(filepath)
         self.code_text.setPlainText(text)
 
-    def set_highlighter(self):
-        """Sets the syntax highlighter for the text based on the current file extension."""
-        highlighter = self.highlighters.get(self.extension, DefaultHighlighter)
-        self.highlighter = highlighter(self.code_text.document())
+    # def set_highlighter(self):
+    #     """Sets the syntax highlighter for the text based on the current file extension.
+
+    #     TODO: Let the code_text handle this instead, like the visuialiser or coderunner"""
+    #     highlighter = self.highlighters.get(self.extension, DefaultHighlighter)
+    #     self.highlighter = highlighter(self.code_text.document())
 
     def dock_code_runner(self):
         """Docks the `code_runner_dock_widget` if it is not already visible"""

@@ -81,11 +81,15 @@ class VisualiserLayoutManager(QHBoxLayout):
     def _create_text_frame(self):
         self.input_text = InputTextEdit()
         self.output_text = QPlainTextEdit()
+        self.input_text.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.output_text.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.output_text.setReadOnly(True)
         self.error_output = QLineEdit()
 
         texts_layout = QVBoxLayout()
+        texts_layout.addWidget(QLabel('Input:'))
         texts_layout.addWidget(self.input_text)
+        texts_layout.addWidget(QLabel('Output:'))
         texts_layout.addWidget(self.output_text)
         texts_layout.addWidget(self.error_output)
 
@@ -246,7 +250,7 @@ class BrainfuckVisualiser(QWidget):
         self.reset_tape()
 
     def init_widgets(self):
-        self.table = ResizingTable(self, minsize=30)
+        self.table = ResizingTable(self, minsize=30, column_counts=(5, 10, 20))
         self.table.setFocusPolicy(Qt.NoFocus)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
@@ -269,6 +273,9 @@ class BrainfuckVisualiser(QWidget):
         self.visuals_to_add.move_to_end(interpreter.tape_pointer)
 
     def set_visuals(self):
+        if not self.visuals_to_add:
+            return
+
         for index, value in self.visuals_to_add.items():
             table_cell = self._get_table_cell_from_index(index)
             while table_cell is None:
@@ -276,12 +283,10 @@ class BrainfuckVisualiser(QWidget):
                 table_cell = self._get_table_cell_from_index(index)
             table_cell.setText(str(value))
 
-        if self.visuals_to_add:
-            self._highlight_cell(table_cell)
-            print('scrolling to item')
-            self.table.scrollToItem(table_cell)
+        self._highlight_cell(table_cell)
+        self.table.scrollToItem(table_cell)
 
-            self.visuals_to_add = OrderedDict()
+        self.visuals_to_add = OrderedDict()
 
     def configure_visual(self, interpreter):
         """"Configure the value of the current cell.
@@ -324,7 +329,7 @@ class BrainfuckVisualiser(QWidget):
 class VisualiserController:
     """Class that handles the logic behind the visualising commands."""
 
-    VISUALISERS = {
+    INTERPRETER_TYPES = {
         '.b': (BFInterpreter, BrainfuckVisualiser),
     }
 
@@ -340,8 +345,9 @@ class VisualiserController:
         """Set the `self.interpreter_type` and `self.visualiser` to the correct ones defined by
         `extension`. If new `extension` is different, then delete `self.visualiser` and set it to None.
         If there is no suitable visualiser / interpreter for `extension`, set them to None."""
-        interpreter_type, visualiser_type = self.VISUALISERS.get(extension, (None, None))
-        if isinstance(self.visualiser, visualiser_type):
+        interpreter_type, visualiser_type = self.INTERPRETER_TYPES.get(extension, (None, None))
+        # if isinstance(self.visualiser, visualiser_type):
+        if type(self.visualiser) is visualiser_type:
             # The new extension is the same as the old one
             return
 
@@ -408,7 +414,7 @@ class VisualiserController:
 
         if self.interpreter is None:
             if not self.restart_interpreter():
-                return False
+                return
 
         command = self.interpreter.step if direction == 1 else self.interpreter.back
 
@@ -527,6 +533,7 @@ class VisualiserMaster(QWidget):
     def restart(self):
         """Restart the visualising. <- Not a great description.
         Disables the code text."""
+        self.set_current_code_pointer(0, length=0)
         self.layout_manager.input_text.restart()
         self.code_text.setReadOnly(True)
 
@@ -575,16 +582,21 @@ class VisualiserMaster(QWidget):
         self.timer.stop()
         self.visualiser_controller.stop()
 
+        self.layout_manager.input_text.restart()
         self.code_text.setReadOnly(False)
         self.remove_command_highlights()
 
     def jump_command(self, direction):
         self.pause_command()
-        steps = int(self.layout_manager.jump_input.text())
-        if direction == 1:
-            self.visualiser_controller.jump_forwards(steps)
+        try:
+            steps = int(self.layout_manager.jump_input.text())
+        except ValueError:
+            self.display_error_text('Invalid jump steps')
         else:
-            self.visualiser_controller.jump_backwards(steps)
+            if direction == 1:
+                self.visualiser_controller.jump_forwards(steps)
+            else:
+                self.visualiser_controller.jump_backwards(steps)
 
     def set_runspeed(self, *args):
         """Set the interval of the running timer. Also set the amount of steps the skip
@@ -650,11 +662,11 @@ class VisualiserMaster(QWidget):
 
     def next_input(self):
         """Return the next input from `self.input_text`"""
-        return self.input_text.next_()
+        return self.layout_manager.input_text.next_()
 
     def undo_input(self):
         """Undo the last input from `self.input_text`."""
-        self.input_text.prev()
+        self.layout_manager.input_text.prev()
 
     def display_error_text(self, text):
         self.layout_manager.display_error_text(text)

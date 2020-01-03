@@ -26,7 +26,7 @@ from input_text import InputTextEdit
 
 class CodeRunner(QWidget):
 
-    INTERPRETERS = {
+    INTERPRETER_TYPES = {
         '.b': FastBrainfuckInterpreter,
     }
 
@@ -52,13 +52,13 @@ class CodeRunner(QWidget):
         self.text.setMaximumBlockCount(1000)
         self.text.setReadOnly(True)
 
-        self.input_ = InputTextEdit(self)
-        self.input_.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self.input_.setMaximumBlockCount(1000)
+        self.input_text = InputTextEdit(self)
+        self.input_text.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.input_text.setMaximumBlockCount(1000)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.text)
-        splitter.addWidget(self.input_)
+        splitter.addWidget(self.input_text)
 
         self.statusbar = QStatusBar(self)
 
@@ -76,13 +76,13 @@ class CodeRunner(QWidget):
         self.statusbar.showMessage('Ready')
 
     def set_extension(self, extension):
-        self.interpreter_type = self.INTERPRETERS.get(extension)
+        self.interpreter_type = self.INTERPRETER_TYPES.get(extension)
 
     def run_code(self, code):
         # Reset the output text
         self.text.clear()
         self.cleanup()
-        self.input_.restart()
+        self.input_text.restart()
         self.statusbar.showMessage('Running')
 
         if self.interpreter_type is None:
@@ -129,7 +129,7 @@ class CodeRunner(QWidget):
         else:
             raise error
 
-        error_text = f'\nError: {message}{f" at {error.location}" if error.location else ""}'
+        error_text = f'\nError: {message}{f" at {error.location}" if error.location is not None else ""}'
         self.add_output(error_text)
 
     def set_error_text(self, text):
@@ -155,12 +155,12 @@ class CodeRunner(QWidget):
                 self.run_finished()
 
     def next_input(self):
-        input_ = self.input_.next_()
+        input_ = self.input_text.next_()
 
         if input_ is None:
             self.output_buffer.append('\nPlease Enter input\n')
             while input_ is None:
-                input_ = self.input_.next_()
+                input_ = self.input_text.next_()
 
         print(f'next input: {input_}')
         return input_

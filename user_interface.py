@@ -23,7 +23,7 @@ class IDE(QMainWindow):
         super().__init__()
 
         self.init_widgets()
-        self._file_filter = 'All Files (*);;Text Files (*.txt);;Brainfuck (*.b)'
+        self._file_dialog_filter = 'All Files (*);;Text Files (*.txt);;Brainfuck (*.b)'
 
     def init_widgets(self):
 
@@ -83,7 +83,7 @@ class IDE(QMainWindow):
     def file_open(self):
         """Opens file into new tab on current window."""
         print('file_open')
-        filename, extension = QFileDialog.getOpenFileName(self, filter=self._file_filter)
+        filename, extension = QFileDialog.getOpenFileName(self, filter=self._file_dialog_filter)
         if not filename:
             return
         print(filename, extension)
@@ -111,7 +111,7 @@ class IDE(QMainWindow):
         if self.editor_area.current_window is None:
             return
 
-        filename, extension = QFileDialog.getSaveFileName(self, filter=self._file_filter)
+        filename, extension = QFileDialog.getSaveFileName(self, filter=self._file_dialog_filter)
         if not filename:
             return
 
@@ -146,3 +146,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# TODO: Use QSettings to create settings page
