@@ -3,13 +3,16 @@ from PyQt5.QtGui import (QPainter,
                          QSyntaxHighlighter,
                          QColor,
                          QTextCharFormat,
+                         QTextBlockFormat,
                          QTextCursor,
                          QTextFormat,
+                         QTextBlock,
                          )
 from PyQt5.QtCore import (Qt,
                           QSize,
                           QRect,
                           QRegExp,
+                          QPoint,
                           )
 from PyQt5.QtWidgets import (QPlainTextEdit,
                              QTextEdit,
@@ -95,6 +98,8 @@ class LineNumberText(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.can_undo = False
+
         self.init_widgets()
 
     def init_widgets(self):
@@ -103,11 +108,16 @@ class LineNumberText(QPlainTextEdit):
 
         self.line_number_area = LineNumberArea(self)
 
+        self.current_line_colour = QColor(Qt.gray).lighter(150)
+        # self.current_block_format = QTextBlockFormat()
+        # self.current_block_format.setBackground(self.current_line_colour)
+        # self.current_block_format.setProperty(QTextFormat.FullWidthSelection, True)
+
+        self.last_block_infos = []
+
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
         self.cursorPositionChanged.connect(self.highlight_current_line)
-
-        self.current_line_colour = QColor(Qt.gray).lighter(150)
 
     def line_number_area_width(self, line=None):
         """Calculates the spacing required for `line`. If `line` is None,
@@ -179,13 +189,51 @@ class LineNumberText(QPlainTextEdit):
         extra_selections = []
 
         selection = QTextEdit.ExtraSelection()
-        selection.format.setBackground(self.current_line_colour)
-        selection.format.setProperty(QTextFormat.FullWidthSelection, True)
         selection.cursor = self.textCursor()
-        selection.cursor.clearSelection()
+        if selection.cursor.hasSelection():
+            selection.cursor.clearSelection()
+        else:
+            selection.format.setBackground(self.current_line_colour)
+            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
         extra_selections.append(selection)
 
         self.setExtraSelections(extra_selections)
+
+        # If I want to expand this to multicursor support, I can create a list of previous
+        # block infos instead.
+
+        # print(self.can_undo)
+
+        # textcursor = self.textCursor()
+        # textcursor.beginEditBlock()
+        # for prev_block, prev_format in self.last_block_infos:
+        #     textcursor.setPosition(prev_block.position())
+        #     textcursor.setBlockFormat(prev_format)
+
+        # self.last_block_infos = []
+        # textcursor.setPosition(self.textCursor().position(), QTextCursor.MoveAnchor)
+        # self.last_block_infos.append((textcursor.block(), textcursor.block().blockFormat()))
+        # textcursor.setBlockFormat(self.current_block_format)
+
+        # textcursor.endEditBlock()
+        # self.textCursor().joinPreviousEditBlock()
+
+    # def focusInEvent(self, event):
+    #     print('LineNumberText.focusInEvent')
+    #     super().focusInEvent(event)
+    #     self.highlight_current_line()
+
+    # def focusOutEvent(self, event):
+    #     print('LineNumberText.focusOutEvent')
+    #     super().focusOutEvent(event)
+    #     self.setExtraSelections([])
+
+    def setReadOnly(self, value):
+        super().setReadOnly(value)
+        if value:
+            self.setExtraSelections([])
+        else:
+            self.highlight_current_line()
 
 
 class CodeText(LineNumberText):
@@ -230,12 +278,47 @@ class CodeText(LineNumberText):
     #         print('right button')
     #         print(self.document().characterAt(self.cursorForPosition(event.pos()).position()))
 
-    def keyPressEvent(self, event):
-        key = event.key()
+    def mousePressEvent(self, event):
+        button = event.button()
         modifiers = QApplication.keyboardModifiers()
 
-        if key == Qt.Key_Q and modifiers == Qt.ControlModifier:
-            self.set_breakpoint()
+        if button == Qt.LeftButton and modifiers == Qt.ControlModifier:
+            # print('Add multicursor', event.pos(), event.localPos(), (event.x(), event.y()), self.document().characterAt(self.cursorForPosition(QPoint(0, 0)).position()))
+            self.add_multicursor(event.pos())
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        buttons = event.buttons()
+        modifiers = QApplication.keyboardModifiers()
+
+        if buttons == Qt.LeftButton and modifiers == Qt.ControlModifier:
+            print('move multicursor')
+            # self.add_
+        else:
+            super().mousePressEvent(event)
+
+    def add_multicursor(self, pos):
+        # print(self.contentOffset().x(), self.contentOffset().y())
+        # text_cursor = self.cursorForPosition(pos)
+        # text_cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+        # f = QTextCharFormat()
+        # f.setBackground(QColor(Qt.green))
+        # text_cursor.setCharFormat(f)
+
+        # text_cursor = self.cursorForPosition(pos)
+        # selection = QTextEdit.ExtraSelection()
+        # selection.cursor = text_cursor
+
+        # self.setExtraSelections([selection])
+        pass
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        # modifiers = QApplication.keyboardModifiers()
+
+        # if key == Qt.Key_Q and modifiers == Qt.ControlModifier:
+        #     self.set_breakpoint()
 
         special_key = True
         if key == Qt.Key_Tab:

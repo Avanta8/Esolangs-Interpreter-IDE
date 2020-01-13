@@ -42,7 +42,7 @@ from interpreter import (FastBrainfuckInterpreter,
                          ProgramSyntaxError,
                          ExecutionEndedError,)
 from utility_widgets import ResizingTable
-from input_text import InputTextEdit
+from input_text import InputTextEdit, HighlighInputText
 
 
 class VisualiserLayoutManager(QHBoxLayout):
@@ -79,7 +79,8 @@ class VisualiserLayoutManager(QHBoxLayout):
         return commands_frame
 
     def _create_text_frame(self):
-        self.input_text = InputTextEdit()
+        # self.input_text = InputTextEdit()
+        self.input_text = HighlighInputText()
         self.output_text = QPlainTextEdit()
         self.input_text.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.output_text.setLineWrapMode(QPlainTextEdit.NoWrap)
@@ -536,6 +537,7 @@ class VisualiserMaster(QWidget):
         self.set_current_code_pointer(0, length=0)
         self.layout_manager.input_text.restart()
         self.code_text.setReadOnly(True)
+        # self.code_text.setExtraSelections([])  # Remove the currenly highlighlied line. For some reason, Focus is not lost or something so it isn't called in the code_text
 
     def set_extension(self, extension):
         """Set the current file extension."""
@@ -645,7 +647,8 @@ class VisualiserMaster(QWidget):
         self.text_cursor.setPosition(code_pointer)
         for pos in range(code_pointer, end):
             # Release the anchor
-            self.text_cursor.movePosition(QTextCursor.NoMove, QTextCursor.MoveAnchor)
+            # self.text_cursor.movePosition(QTextCursor.NoMove, QTextCursor.MoveAnchor)
+            self.text_cursor.setPosition(self.text_cursor.position(), QTextCursor.MoveAnchor)
             # Move along one char
             self.text_cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
             # Store format of previous char
@@ -653,7 +656,8 @@ class VisualiserMaster(QWidget):
             self.prev_formats[pos] = char_format
             # Merge new format
             self.text_cursor.mergeCharFormat(self.highlight_format)
-        self.text_cursor.movePosition(QTextCursor.NoMove, QTextCursor.MoveAnchor)
+        # self.text_cursor.movePosition(QTextCursor.NoMove, QTextCursor.MoveAnchor)
+        self.text_cursor.setPosition(self.text_cursor.position(), QTextCursor.MoveAnchor)
 
     def set_output(self, text):
         """Set the current output to `text`"""

@@ -1,4 +1,5 @@
 import enum
+import functools
 from collections import deque
 
 
@@ -158,23 +159,26 @@ class FastBrainfuckInterpreter:
         self.input_func = input_func
         self.output_func = output_func
         self.tape = [0] * 40000
-        self.command_pointer = 0
-        self.tape_pointer = 0
-        self.output = []
+
+        self.reset()
 
     def run(self):
         self.running = True
         while self.running:
-            command, arg = self.commands[self.command_pointer]
-            command(arg)
-            self.command_pointer += 1
+            # self.commands[self.command_pointer]()
+            # self.command_pointer += 1
+            self.step()
         return ''.join(self.output)
 
-    def open_loop(self, arg):
+    def step(self):
+        self.commands[self.command_pointer]()
+        self.command_pointer += 1
+
+    def open_loop(self):
         if self.current_cell == 0:
             self.command_pointer = self.brackets[self.command_pointer]
 
-    def close_loop(self, arg):
+    def close_loop(self):
         if self.current_cell != 0:
             self.command_pointer = self.brackets[self.command_pointer]
 
@@ -187,16 +191,24 @@ class FastBrainfuckInterpreter:
         self.tape[self.tape_pointer] = (
             self.tape[self.tape_pointer] + times) % 256
 
-    def accept_input(self, arg):
-        self.tape[self.tape_pointer] = ord(self.input_func()) % 256
+    def accept_input(self):
+        input_ = self.input_func()
+        print('input:', repr(input_))
+        self.tape[self.tape_pointer] = ord(input_) % 256
 
-    def add_output(self, arg):
+    def add_output(self):
         self.output.append(chr(self.current_cell))
         if self.output_func:
             self.output_func(chr(self.current_cell))
 
-    def stop(self, arg):
+    def stop(self):
         self.running = False
+
+    def reset(self):
+        self.stop()
+        self.command_pointer = 0
+        self.tape_pointer = 0
+        self.output = []
 
     @property
     def current_cell(self):
@@ -253,9 +265,13 @@ class FastBrainfuckInterpreter:
                 i += 1
 
             if char in command_funcs:
-                final_commands.append((command_funcs[char], arg))
+                command = command_funcs[char]
+                if arg is None:
+                    final_commands.append(command)
+                else:
+                    final_commands.append(functools.partial(command, arg))
 
-        final_commands.append((self.stop, None))
+        final_commands.append(self.stop)
 
         if bracket_stack:
             raise ProgramSyntaxError(
@@ -264,7 +280,13 @@ class FastBrainfuckInterpreter:
 
 
 class InterpreterError(Exception):
-    """Base class for exceptions to do with an interpreter."""
+    """Base class for exceptions to do with an interpreter.
+
+    Attributes:
+        message -- Optional message describing error"""
+
+    def __init__(self, message=None):
+        self.message = message
 
 
 class ExecutionEndedError(InterpreterError):
@@ -288,9 +310,9 @@ class ProgramError(InterpreterError):
         message -- Optional mesage (default to None)."""
 
     def __init__(self, error=None, location=None, message=None):
+        super().__init__(message)
         self.error = error
         self.location = location
-        self.message = message
 
 
 class ProgramSyntaxError(ProgramError):
@@ -302,9 +324,15 @@ class ProgramRuntimeError(ProgramError):
 
 
 if __name__ == '__main__':
+    # with open(r'programs\sample\hello_world.b') as file:
+    # with open(r'programs\mine\foo.b') as file:
     with open(r'programs\sample\mandelbrot.b') as file:
         prog = file.read()
 
-    interpreter = BFInterpreter(prog, output_func=print)
-    for i in range(100_000):
-        interpreter.step()
+    # interpreter = BFInterpreter(prog, output_func=print)
+    # for i in range(100_000):
+    #     interpreter.step()
+
+    interpreter = FastBrainfuckInterpreter(prog, output_func=lambda x: print(x, end=''))
+    # interpreter = FastBrainfuckInterpreter(prog, output_func=print)
+    interpreter.run()

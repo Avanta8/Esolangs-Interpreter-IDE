@@ -29,11 +29,6 @@ from visualiser import VisualiserMaster
 class TextEditor(QMainWindow):
     """Basic text editor widget containing a `CodeText` and maybe more."""
 
-    # Let the code_text handle this, like the visuialiser or coderunner
-    # highlighters = {
-    #     '.b': BrainfuckHighlighter,
-    # }
-
     def __init__(self, editor_window):
         super().__init__()
 
@@ -81,19 +76,11 @@ class TextEditor(QMainWindow):
         self.code_text.set_extension(new_extension)
         self.code_runner.set_extension(new_extension)
         self.visualiser.set_extension(new_extension)
-        # self.set_highlighter()
 
     def store_open_file(self, filepath, text):
         """Store `filepath` and set current text to `text`."""
         self.store_filepath(filepath)
         self.code_text.setPlainText(text)
-
-    # def set_highlighter(self):
-    #     """Sets the syntax highlighter for the text based on the current file extension.
-
-    #     TODO: Let the code_text handle this instead, like the visuialiser or coderunner"""
-    #     highlighter = self.highlighters.get(self.extension, DefaultHighlighter)
-    #     self.highlighter = highlighter(self.code_text.document())
 
     def dock_code_runner(self):
         """Docks the `code_runner_dock_widget` if it is not already visible"""
